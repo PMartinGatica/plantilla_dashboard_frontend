@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+/* 
+  En Tailwind v4, los colores default como slate ya deberían estar incluidos.
+  Si falla, usaremos gray. 
+*/
+
+body {
+  /* @apply no es estrictamente necesario si usamos clases en el HTML, 
+     pero probaremos sin @apply para evitar errores de compilación si la clase no se detecta a tiempo. */
+  background-color: #f8fafc;
+  /* bg-slate-50 fallback/equivalent */
+  color: #1e293b;
+  /* text-slate-800 fallback/equivalent */
+}
