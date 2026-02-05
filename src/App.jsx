@@ -19,7 +19,8 @@ import {
   CheckCircle,
   Activity,
   Download,
-  Loader2
+  Loader2,
+  ChevronDown
 } from 'lucide-react';
 import { fetchData } from './api';
 
@@ -43,11 +44,16 @@ export default function App() {
   const [rawData, setRawData] = useState({ production: [], rejections: [] });
   const [error, setError] = useState(null);
 
-  // Estados para filtros
-  const [filtroOperario, setFiltroOperario] = useState('Todos');
-  const [filtroModelo, setFiltroModelo] = useState('Todos');
+  // Estados para filtros (ahora arrays para selección múltiple)
+  const [filtroOperarios, setFiltroOperarios] = useState([]);
+  const [filtroModelos, setFiltroModelos] = useState([]);
   const [fechaInicio, setFechaInicio] = useState('');
   const [fechaFin, setFechaFin] = useState('');
+
+  // Estados para controlar dropdowns
+  const [dropdownOperariosOpen, setDropdownOperariosOpen] = useState(false);
+  const [dropdownModelosOpen, setDropdownModelosOpen] = useState(false);
+
 
   // Helper para buscar claves confusas
   const guessKey = (obj, candidates) => {
@@ -141,8 +147,27 @@ export default function App() {
     return d.toISOString().split('T')[0];
   };
 
-  const operariosUnicos = ['Todos', ...new Set(rawData.production.map(d => d.operario))];
-  const modelosUnicos = ['Todos', ...new Set(rawData.production.map(d => d.modelo))];
+
+  const operariosUnicos = [...new Set(rawData.production.map(d => d.operario))].filter(Boolean);
+  const modelosUnicos = [...new Set(rawData.production.map(d => d.modelo))].filter(Boolean);
+
+  // Funciones para manejar selección múltiple
+  const toggleOperario = (operario) => {
+    setFiltroOperarios(prev =>
+      prev.includes(operario)
+        ? prev.filter(o => o !== operario)
+        : [...prev, operario]
+    );
+  };
+
+  const toggleModelo = (modelo) => {
+    setFiltroModelos(prev =>
+      prev.includes(modelo)
+        ? prev.filter(m => m !== modelo)
+        : [...prev, modelo]
+    );
+  };
+
 
   // --- LÓGICA PRINCIPAL DE MERGE (MECHAR DATOS) ---
   const datosProcesados = useMemo(() => {
@@ -185,16 +210,16 @@ export default function App() {
       };
     });
 
-    // 3. Aplicar filtros de UI (Operario y Modelo)
-    if (filtroOperario !== 'Todos') {
-      datosCombinados = datosCombinados.filter(d => d.operario === filtroOperario);
+    // 3. Aplicar filtros de UI (Operario y Modelo) - Selección múltiple
+    if (filtroOperarios.length > 0) {
+      datosCombinados = datosCombinados.filter(d => filtroOperarios.includes(d.operario));
     }
-    if (filtroModelo !== 'Todos') {
-      datosCombinados = datosCombinados.filter(d => d.modelo === filtroModelo);
+    if (filtroModelos.length > 0) {
+      datosCombinados = datosCombinados.filter(d => filtroModelos.includes(d.modelo));
     }
 
     return datosCombinados;
-  }, [rawData, filtroOperario, filtroModelo, fechaInicio, fechaFin, loading]);
+  }, [rawData, filtroOperarios, filtroModelos, fechaInicio, fechaFin, loading]);
 
   // --- DATOS PARA GRÁFICOS ---
 
@@ -271,26 +296,86 @@ export default function App() {
               <input type="date" className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-full outline-none focus:ring-2 focus:ring-blue-500" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} />
             </div>
           </div>
-          <div className="w-full md:w-48">
-            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Operario</label>
-            <div className="relative">
-              <Users className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-              <select className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-full bg-white outline-none focus:ring-2 focus:ring-blue-500" value={filtroOperario} onChange={(e) => setFiltroOperario(e.target.value)}>
-                {operariosUnicos.map(op => <option key={op} value={op}>{op}</option>)}
-              </select>
-            </div>
+          {/* Dropdown Operarios */}
+          <div className="w-full md:w-64 relative">
+            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">
+              Operarios
+            </label>
+            <button
+              onClick={() => setDropdownOperariosOpen(!dropdownOperariosOpen)}
+              className="w-full flex items-center justify-between px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white hover:bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-700">
+                  {filtroOperarios.length > 0 ? `${filtroOperarios.length} seleccionado(s)` : 'Todos'}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${dropdownOperariosOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {dropdownOperariosOpen && (
+              <div className="absolute z-10 mt-1 w-full border border-slate-200 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto">
+                {operariosUnicos.map(op => (
+                  <label key={op} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filtroOperarios.includes(op)}
+                      onChange={() => toggleOperario(op)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-700">{op}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="w-full md:w-48">
-            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">Modelo</label>
-            <div className="relative">
-              <Box className="absolute left-3 top-2.5 text-slate-400 w-4 h-4" />
-              <select className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm w-full bg-white outline-none focus:ring-2 focus:ring-blue-500" value={filtroModelo} onChange={(e) => setFiltroModelo(e.target.value)}>
-                {modelosUnicos.map(mod => <option key={mod} value={mod}>{mod}</option>)}
-              </select>
-            </div>
+
+          {/* Dropdown Modelos */}
+          <div className="w-full md:w-64 relative">
+            <label className="block text-xs font-semibold text-slate-500 mb-1 uppercase tracking-wider">
+              Modelos
+            </label>
+            <button
+              onClick={() => setDropdownModelosOpen(!dropdownModelosOpen)}
+              className="w-full flex items-center justify-between px-4 py-2 border border-slate-200 rounded-lg text-sm bg-white hover:bg-slate-50 focus:ring-2 focus:ring-blue-500 outline-none"
+            >
+              <div className="flex items-center gap-2">
+                <Box className="w-4 h-4 text-slate-400" />
+                <span className="text-slate-700">
+                  {filtroModelos.length > 0 ? `${filtroModelos.length} seleccionado(s)` : 'Todos'}
+                </span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${dropdownModelosOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {dropdownModelosOpen && (
+              <div className="absolute z-10 mt-1 w-full border border-slate-200 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto">
+                {modelosUnicos.map(mod => (
+                  <label key={mod} className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filtroModelos.includes(mod)}
+                      onChange={() => toggleModelo(mod)}
+                      className="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-slate-700">{mod}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
+
           <div className="w-full md:w-auto ml-auto">
-            <button onClick={() => { setFiltroModelo('Todos'); setFiltroOperario('Todos'); }} className="text-sm text-slate-500 hover:text-blue-600 underline">Limpiar</button>
+            <button
+              onClick={() => {
+                setFiltroModelos([]);
+                setFiltroOperarios([]);
+                setDropdownOperariosOpen(false);
+                setDropdownModelosOpen(false);
+              }}
+              className="text-sm text-slate-500 hover:text-blue-600 underline"
+            >
+              Limpiar
+            </button>
           </div>
         </div>
       </div>
